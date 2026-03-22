@@ -1,8 +1,8 @@
-pandas 
-numpy
+pandas<3.0.0
+numpy<2.0.0
 matplotlib
 scikit-learn
-tensorflow
+tensorflow==2.15.0
 streamlit
 scikeras
 nltk
