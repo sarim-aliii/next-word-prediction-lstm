@@ -1,39 +1,56 @@
 import streamlit as st
 import numpy as np
 import pickle
+import os
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-
+# Load Model with Error Handling
 @st.cache_resource
 def load_lstm_model():
+    if not os.path.exists("next_word_lstm.h5"):
+        raise FileNotFoundError("next_word_lstm.h5 not found.")
     return load_model("next_word_lstm.h5")
 
+# Load Tokenizer & Build Dictionary with Error Handling
 @st.cache_resource
-def load_tokenizer():
+def load_tokenizer_and_mapping():
+    if not os.path.exists("tokenizer.pickle"):
+        raise FileNotFoundError("tokenizer.pickle not found.")
+    
     with open("tokenizer.pickle", "rb") as handle:
-        return pickle.load(handle)
+        tokenizer = pickle.load(handle)
+        
+    # Reverse word index built inside cache for faster lookup
+    index_to_word = {index: word for word, index in tokenizer.word_index.items()}
+    return tokenizer, index_to_word
 
+# App Title & Description
+st.title("Next Word Prediction using LSTM")
+st.write("Enter a sequence of words and the model will predict the next word.")
 
-model = load_lstm_model()
-tokenizer = load_tokenizer()
+# Attempt to load resources, stop execution if files are missing
+try:
+    model = load_lstm_model()
+    tokenizer, index_to_word = load_tokenizer_and_mapping()
+except FileNotFoundError as e:
+    st.error(f"Error: {e} Please ensure the model has been trained and the required files are in the directory.")
+    st.stop()
 
-# Reverse word index for faster lookup
-index_to_word = {index: word for word, index in tokenizer.word_index.items()}
-
-# Prediction
-def predict_next_words(model, tokenizer, text, max_sequence_len, top_k=3):
+# Prediction Function
+def predict_next_words(model, tokenizer, index_to_word, text, sequence_len, top_k=3):
     token_list = tokenizer.texts_to_sequences([text])[0]
 
     if len(token_list) == 0:
-        return ["No known words found"]
+        return [("No known words found", 0.0)]
 
-    if len(token_list) >= max_sequence_len:
-        token_list = token_list[-(max_sequence_len - 1):]
+    # Simplified length logic
+    if len(token_list) >= sequence_len:
+        token_list = token_list[-sequence_len:]
 
     token_list = pad_sequences(
         [token_list],
-        maxlen=max_sequence_len - 1,
+        maxlen=sequence_len,
         padding="pre"
     )
 
@@ -50,11 +67,7 @@ def predict_next_words(model, tokenizer, text, max_sequence_len, top_k=3):
 
     return words
 
-
-# App
-st.title("Next Word Prediction using LSTM")
-st.write("Enter a sequence of words and the model will predict the next word.")
-
+# User Inputs
 input_text = st.text_input(
     "Enter text",
     "To be or not to"
@@ -67,8 +80,10 @@ top_k = st.slider(
     3
 )
 
+# Execution
 if st.button("Predict"):
-    max_sequence_len = model.input_shape[1] + 1
+    # Using exact input shape
+    sequence_len = model.input_shape[1]
 
     with st.status("Running prediction...", expanded=True) as status:
 
@@ -76,8 +91,9 @@ if st.button("Predict"):
         predictions = predict_next_words(
             model,
             tokenizer,
+            index_to_word,
             input_text,
-            max_sequence_len,
+            sequence_len,
             top_k
         )
 
@@ -87,4 +103,4 @@ if st.button("Predict"):
     st.subheader("Predicted Next Words")
 
     for word, prob in predictions:
-        st.write(f"**{word}**  (confidence: {prob:.4f})")
+        st.write(f"**{word}** (confidence: {prob:.4f})")

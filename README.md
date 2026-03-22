@@ -2,6 +2,7 @@
 
 A deep learning project that predicts the next word in a sequence using an LSTM-based language model. The model is trained on text data and deployed using a Streamlit web application for interactive predictions.
 
+
 ## Project Overview
 
 This project demonstrates how Recurrent Neural Networks (RNNs), specifically **LSTM (Long Short-Term Memory)** networks, can be used to build a simple language model that predicts the next word in a sentence.
@@ -15,6 +16,8 @@ Prediction:
 be
 
 The application can also display multiple possible predictions with their confidence scores.
+
+![alt text](image.png)
 
 ---
 
